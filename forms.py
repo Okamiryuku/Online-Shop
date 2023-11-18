@@ -1,15 +1,15 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, PasswordField
+from wtforms import StringField, SubmitField, PasswordField, IntegerField
 from wtforms.validators import DataRequired, URL
 from flask_ckeditor import CKEditorField
 
 
 # WTForm for creating a blog post
 class InventoryForm(FlaskForm):
-    product_name = StringField("Blog Post Title", validators=[DataRequired()])
-    price = StringField("Subtitle", validators=[DataRequired()])
-    quantity = StringField("Blog Image URL", validators=[DataRequired()])
-    submit = SubmitField("Submit Post")
+    product_name = StringField("Product Name", validators=[DataRequired()])
+    price = IntegerField("Price", validators=[DataRequired()])
+    quantity = IntegerField("Quantity", validators=[DataRequired()])
+    submit = SubmitField("Add Item")
 
 
 # Create a form to register new users
