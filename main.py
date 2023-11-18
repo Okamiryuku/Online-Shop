@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
-from forms import InventoryForm, RegisterForm, LoginForm, CommentForm
+from forms import InventoryForm, RegisterForm, LoginForm
 import stripe
 
 
@@ -15,8 +15,8 @@ stripe.api_key = 'sk_test_IKYCHOAmUhC7IPTdaoVtO58D'
 
 app = Flask(__name__)
 
-YOUR_DOMAIN = 'http://localhost:4242'
-
+YOUR_DOMAIN = 'http://127.0.0.1:5001'
+CART = []
 
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
@@ -105,7 +105,30 @@ def create_checkout_session():
     except Exception as e:
         return str(e)
 
-    return redirect(checkout_session.url, code=303)
+    return render_template(checkout_session.url, code=303)
+
+
+@app.route('/order/success')
+def success():
+    return render_template('success.html')
+
+
+@app.route('/order/cancel')
+def cancel():
+    return render_template('cancel.html')
+
+
+@app.route('/add_to_cart/<int:product_id>')
+def add_to_cart(product_id):
+    CART.append(product_id)
+    return redirect(url_for('show_cart'))
+
+
+@app.route('/show_cart')
+def show_cart():
+    cart_items = [int(item) for item in CART]
+    products_in_cart = Inventory.query.filter(Inventory.product_id.in_(cart_items)).all()
+    return render_template('show_cart.html', products_in_cart=products_in_cart, current_user=current_user)
 
 
 # Register new users into the User database
@@ -166,7 +189,7 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('get_all_posts'))
+    return redirect(url_for('index'))
 
 
 @app.route('/')
@@ -196,7 +219,7 @@ def inventory():
         db.session.add(new_item)
         db.session.commit()
         return redirect(url_for("index"))
-    return render_template("make-post.html", form=form, current_user=current_user)
+    return render_template("make-show_cart.html", form=form, current_user=current_user)
 
 
 # Use a decorator so only an admin user can edit a post
@@ -214,7 +237,7 @@ def edit_post(post_id):
         post.quantity = edit_form.quantity.data
         db.session.commit()
         return redirect(url_for("index"))
-    return render_template("make-post.html", form=edit_form, is_edit=True, current_user=current_user)
+    return render_template("make-show_cart.html", form=edit_form, is_edit=True, current_user=current_user)
 
 
 # Use a decorator so only an admin user can delete a post
