@@ -27,6 +27,9 @@
         {% endfor %}
       </ul>
     </div>
+    <form method="POST" action="{{ url_for('create_checkout_session') }}" class="d-flex justify-content-end mb-4">
+      <button class="btn btn-primary float-right" type="submit">Checkout</button>
+    </form>
   </div>
 </section>
 

@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash
+from flask import Flask, abort, render_template, redirect, url_for, flash, jsonify
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
@@ -11,7 +11,8 @@ from forms import InventoryForm, RegisterForm, LoginForm
 import stripe
 
 
-stripe.api_key = 'sk_test_IKYCHOAmUhC7IPTdaoVtO58D'
+stripe.api_key = 'pk_test_51ODewvIlrA5L99MBXvP71qe65tMvhV9qC8aLRR8HPygAtWs9MCaEJD2tLlUNIcGGgcsd3CkZK5UI4ILzEnnH2H9X00XT6iDOSb'
+STRIPE_ENDPOINT = 'https://api.stripe.com'
 
 app = Flask(__name__)
 
@@ -90,14 +91,22 @@ def admin_only(f):
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
-        checkout_session = stripe.checkout.Session.create(
-            line_items=[
-                {
-                    # Provide the exact Price ID (for example, pr_1234) of the product you want to sell
-                    'price': '{{PRICE_ID}}',
+        cart_items = [int(item) for item in CART]
+
+        # Get product information for each item in the cart
+        line_items = []
+        for product_id in cart_items:
+            product = Inventory.query.get(product_id)
+            if product:
+                # Assuming 'price_id' is a field in your Inventory model
+                price_id = product.product_id  # Replace with the actual field name
+                line_items.append({
+                    'price': price_id,
                     'quantity': 1,
-                },
-            ],
+                })
+
+        checkout_session = stripe.checkout.Session.create(
+            line_items=line_items,
             mode='payment',
             success_url=YOUR_DOMAIN + '/success.html',
             cancel_url=YOUR_DOMAIN + '/cancel.html',
