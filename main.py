@@ -50,9 +50,9 @@ db.init_app(app)
 
 
 # User Table
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    user_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, unique=True)
     username = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100), nullable=False)
@@ -71,7 +71,7 @@ class Inventory(db.Model):
 class OrderHistory(db.Model):
     __tablename__ = 'order_history'
     order_id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     product_id = db.Column(db.Integer, db.ForeignKey('inventory.product_id'))
     quantity = db.Column(db.Integer, nullable=False)
     total_price = db.Column(db.Integer, nullable=False)
@@ -140,7 +140,7 @@ def register():
         )
         new_user = User(
             email=form.email.data,
-            name=form.name.data,
+            username=form.username.data,
             password=hash_and_salted_password,
         )
         db.session.add(new_user)
