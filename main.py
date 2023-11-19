@@ -12,7 +12,7 @@ from flask_session import Session
 import stripe
 
 
-stripe.api_key = 'pk_test_51ODewvIlrA5L99MBXvP71qe65tMvhV9qC8aLRR8HPygAtWs9MCaEJD2tLlUNIcGGgcsd3CkZK5UI4ILzEnnH2H9X00XT6iDOSb'
+stripe.api_key = 'sk_test_51ODewvIlrA5L99MBK1VZgYRZrPvXc1MczJwv3IdzNl083enyczG1R0HUK2m6ap1b94QHgKERot1vNhdNSpqf11Ha00dlN4W9ws'
 STRIPE_ENDPOINT = 'https://api.stripe.com'
 
 app = Flask(__name__)
@@ -95,22 +95,28 @@ def admin_only(f):
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
-        cart_items = [int(item) for item in CART]
+        # cart_items = session.get('cart', [])
+        # products_in_cart = Inventory.query.filter(Inventory.product_id.in_(cart_items)).all()
 
-        # Get product information for each item in the cart
-        line_items = []
-        for product_id in cart_items:
-            product = Inventory.query.get(product_id)
-            if product:
-                # Assuming 'price_id' is a field in your Inventory model
-                price_id = product.product_id  # Replace with the actual field name
-                line_items.append({
-                    'price': price_id,
-                    'quantity': 1,
-                })
+        # # Get product information for each item in the cart
+        # line_items = []
+        # for product in cart_items:
+        #     # Assuming 'price_id' is a field in your Inventory model
+        #     price_id = product.product_id  # Replace with the actual field name
+        #     line_items.append({
+        #         'price': price_id,
+        #         'quantity': 1,
+        #     })
+        # 4242424242424242
 
         checkout_session = stripe.checkout.Session.create(
-            line_items=line_items,
+            line_items=[
+                {
+                    # Provide the exact Price ID (for example, pr_1234) of the product you want to sell
+                    'price': 'price_1OE10ZIlrA5L99MBJAJDlQxg',
+                    'quantity': 1,
+                },
+            ],
             mode='payment',
             success_url=YOUR_DOMAIN + '/success.html',
             cancel_url=YOUR_DOMAIN + '/cancel.html',
@@ -121,12 +127,14 @@ def create_checkout_session():
     return render_template(checkout_session.url, code=303)
 
 
-@app.route('/order/success')
+@app.route('/success')
 def success():
+    session['cart'] = []
+    session['total'] = 0
     return render_template('success.html')
 
 
-@app.route('/order/cancel')
+@app.route('/cancel')
 def cancel():
     return render_template('cancel.html')
 
@@ -147,9 +155,8 @@ def show_cart():
         session['total'] = 0
     cart_items = session.get('cart', [])
     products_in_cart = Inventory.query.filter(Inventory.product_id.in_(cart_items)).all()
-    for product in products_in_cart:
-        session['total'] += product.price
-    return render_template('show_cart.html', products_in_cart=products_in_cart,total=session['total'], current_user=current_user)
+    session['total'] = sum(product.price for product in products_in_cart)
+    return render_template('show_cart.html', products_in_cart=products_in_cart, total=session['total'], current_user=current_user)
 
 
 # Register new users into the User database
@@ -242,7 +249,7 @@ def inventory():
         db.session.add(new_item)
         db.session.commit()
         return redirect(url_for("index"))
-    return render_template("make-show_cart.html", form=form, current_user=current_user)
+    return render_template("add-products.html", form=form, current_user=current_user)
 
 
 # Use a decorator so only an admin user can edit a post
@@ -260,7 +267,7 @@ def edit_post(post_id):
         post.quantity = edit_form.quantity.data
         db.session.commit()
         return redirect(url_for("index"))
-    return render_template("make-show_cart.html", form=edit_form, is_edit=True, current_user=current_user)
+    return render_template("add-products.html", form=edit_form, is_edit=True, current_user=current_user)
 
 
 # Use a decorator so only an admin user can delete a post
@@ -274,9 +281,23 @@ def delete_post(post_id):
 
 
 @app.route("/about")
+@admin_only
 def about():
-    if not session.get("name"):
-        return redirect("/login")
+    result = db.session.execute(db.select(Inventory))
+    inventory = result.scalars().all()
+
+    for item in inventory:
+        product = stripe.Product.create(
+            name=item.product_name,
+            description='item',
+            type="good",
+        )
+
+        price = stripe.Price.create(
+            product=product.id,
+            unit_amount=item.price,
+            currency='USD',
+        )
     return render_template("about.html", current_user=current_user)
 
 
