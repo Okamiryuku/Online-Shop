@@ -1,5 +1,5 @@
 from datetime import date
-from flask import Flask, abort, render_template, redirect, url_for, flash, jsonify
+from flask import Flask, abort, render_template, redirect, url_for, flash, session, request
 from flask_bootstrap import Bootstrap5
 from flask_ckeditor import CKEditor
 from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user
@@ -8,6 +8,7 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship
 from forms import InventoryForm, RegisterForm, LoginForm
+from flask_session import Session
 import stripe
 
 
@@ -15,6 +16,9 @@ stripe.api_key = 'pk_test_51ODewvIlrA5L99MBXvP71qe65tMvhV9qC8aLRR8HPygAtWs9MCaEJ
 STRIPE_ENDPOINT = 'https://api.stripe.com'
 
 app = Flask(__name__)
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_TYPE"] = "filesystem"
+Session(app)
 
 YOUR_DOMAIN = 'http://127.0.0.1:5001'
 CART = []
@@ -129,15 +133,23 @@ def cancel():
 
 @app.route('/add_to_cart/<int:product_id>')
 def add_to_cart(product_id):
-    CART.append(product_id)
+    if 'cart' not in session:
+        session['cart'] = []
+    session['cart'].append(product_id)
     return redirect(url_for('show_cart'))
 
 
 @app.route('/show_cart')
 def show_cart():
-    cart_items = [int(item) for item in CART]
+    if not session.get("name"):
+        return redirect("/login")
+    if 'total' not in session:
+        session['total'] = 0
+    cart_items = session.get('cart', [])
     products_in_cart = Inventory.query.filter(Inventory.product_id.in_(cart_items)).all()
-    return render_template('show_cart.html', products_in_cart=products_in_cart, current_user=current_user)
+    for product in products_in_cart:
+        session['total'] += product.price
+    return render_template('show_cart.html', products_in_cart=products_in_cart,total=session['total'], current_user=current_user)
 
 
 # Register new users into the User database
@@ -189,6 +201,7 @@ def login():
             flash('Password incorrect, please try again.')
             return redirect(url_for('login'))
         else:
+            session["name"] = form.password.data
             login_user(user)
             return redirect(url_for('index'))
 
@@ -197,6 +210,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    session["name"] = None
     logout_user()
     return redirect(url_for('index'))
 
@@ -261,6 +275,8 @@ def delete_post(post_id):
 
 @app.route("/about")
 def about():
+    if not session.get("name"):
+        return redirect("/login")
     return render_template("about.html", current_user=current_user)
 
 

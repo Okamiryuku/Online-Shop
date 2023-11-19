@@ -21,11 +21,17 @@
   <div class="container px-4 px-lg-5 mt-5">
     <div class="row gx-4 gx-lg-5 row-cols-2 row-cols-md-3 row-cols-xl-4 justify-content-center">
       <h1>Your Shopping Cart</h1>
+      {% if products_in_cart %}
       <ul>
         {% for product in products_in_cart %}
         <li>{{ product.product_name }} - ${{ product.price }}</li>
         {% endfor %}
+        <hr class="my-4" />
+        <li>TOTAL: ${{  total }}</li>
       </ul>
+      {% else %}
+      <p>Your shopping cart is empty.</p>
+      {% endif %}
     </div>
     <form method="POST" action="{{ url_for('create_checkout_session') }}" class="d-flex justify-content-end mb-4">
       <button class="btn btn-primary float-right" type="submit">Checkout</button>
